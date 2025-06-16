@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON to CSV Converter</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+#fields { margin-top: 20px; }
+#fields label { display: block; margin: 4px 0; }
+</style>
+</head>
+<body>
+<h1>JSON to CSV Converter</h1>
+<input type="file" id="jsonFile" accept="application/json">
+<div id="fields"></div>
+<button id="generate" disabled>Generate CSV</button>
+<a id="downloadLink" style="display:none; margin-left:10px;">Download CSV</a>
+
+<script>
+let jsonData = [];
+let flatData = [];
+let allKeys = new Set();
+
+function flattenObject(obj, prefix = '') {
+    let result = {};
+    for (let key in obj) {
+        if (!obj.hasOwnProperty(key)) continue;
+        let val = obj[key];
+        let newKey = prefix ? `${prefix}.${key}` : key;
+        if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+            Object.assign(result, flattenObject(val, newKey));
+        } else {
+            result[newKey] = Array.isArray(val) ? JSON.stringify(val) : val;
+        }
+    }
+    return result;
+}
+
+function handleFile(evt) {
+    const file = evt.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            jsonData = Array.isArray(parsed) ? parsed : [parsed];
+            flatData = jsonData.map(item => flattenObject(item));
+            allKeys = new Set();
+            flatData.forEach(obj => Object.keys(obj).forEach(k => allKeys.add(k)));
+            renderFields();
+            document.getElementById('generate').disabled = false;
+        } catch (err) {
+            alert('Invalid JSON file');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function renderFields() {
+    const container = document.getElementById('fields');
+    container.innerHTML = '<h3>Select fields to include:</h3>';
+    Array.from(allKeys).forEach(key => {
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = key;
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(' ' + key));
+        container.appendChild(label);
+    });
+}
+
+function generateCSV() {
+    const selected = Array.from(document.querySelectorAll('#fields input:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Select at least one field.');
+        return;
+    }
+    const lines = [];
+    lines.push(selected.join(','));
+    flatData.forEach(item => {
+        const row = selected.map(k => {
+            let val = item[k];
+            if (val === undefined) val = '';
+            if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
+                val = '"' + val.replace(/"/g, '""') + '"';
+            }
+            return val;
+        });
+        lines.push(row.join(','));
+    });
+    const csvContent = lines.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.getElementById('downloadLink');
+    link.href = url;
+    link.download = 'output.csv';
+    link.style.display = 'inline';
+    link.textContent = 'Download CSV';
+}
+
+document.getElementById('jsonFile').addEventListener('change', handleFile);
+document.getElementById('generate').addEventListener('click', generateCSV);
+</script>
+</body>
+</html>
