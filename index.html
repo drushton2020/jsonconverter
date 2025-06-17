@@ -16,6 +16,10 @@ body { font-family: Arial, sans-serif; margin: 20px; }
 <div id="fields"></div>
 <button id="generate" disabled>Generate CSV</button>
 <a id="downloadLink" style="display:none; margin-left:10px;">Download CSV</a>
+<div id="previewSection" style="display:none; margin-top:20px;">
+    <h3>CSV Preview</h3>
+    <pre id="csvPreview" style="white-space:pre-wrap; border:1px solid #ccc; padding:10px;"></pre>
+</div>
 
 <script>
 let jsonData = [];
@@ -91,6 +95,8 @@ function generateCSV() {
         lines.push(row.join(','));
     });
     const csvContent = lines.join('\n');
+    document.getElementById('csvPreview').textContent = csvContent;
+    document.getElementById('previewSection').style.display = 'block';
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.getElementById('downloadLink');
